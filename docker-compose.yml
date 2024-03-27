@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+
+  registryT:
+    # restart: always
+    image: registry:3.0.0-alpha.1
+    ports:
+      - 5000:5000
+    container_name: registry-php-one
+    
+    environment:
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/mycert.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/mykey.key
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+    volumes:
+      - type: bind
+        source: ./data-registrymy
+        target: /var/lib/registry
+        bind:
+          propagation: rshared
+      - type: bind
+        source: ./path/certs
+        target: /certs
+      - type: bind
+        source: ./path/auth
+        target: /auth
+
+  registryN:
+    # restart: always
+    image: registry:3.0.0-alpha.1
+    ports:
+      - 5100:5000
+    container_name: registry-node-t
+    
+    environment:
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs1/mycert1.crt
+      REGISTRY_HTTP_TLS_KEY: /certs1/mykey1.key
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+    volumes:
+      - type: bind
+        source: ./data-registrymy1
+        target: /var/lib/registry1
+        bind:
+          propagation: rshared
+      - type: bind
+        source: ./path/certs1
+        target: /certs1
+      - type: bind
+        source: ./path/auth
+        target: /auth
