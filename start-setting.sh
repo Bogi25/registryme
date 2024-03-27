@@ -76,3 +76,5 @@ sudo ln -s /etc/docker/certs.d/registry.local/mycert1.crt /home/$username/.docke
 
 echo "Перезавантаження Docker для застосування змін"
 sudo systemctl restart docker
+echo "Запускаємо Registy"
+docker compose up -d
