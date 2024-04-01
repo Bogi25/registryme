@@ -38,12 +38,12 @@ cd registryme
 
 </details>
 
-3. Records and encrypts login and password using htpasswd, DOCKER_USERNAME_LOCAL and DOCKER_PASSWORD_LOCAL secrets added to GitHub.
+3. Records and encrypts login and password using htpasswd, `DOCKER_USERNAME_LOCAL` and `DOCKER_PASSWORD_LOCAL` secrets added to GitHub.
 4. Creates a self-signed certificate and adds it to docker to trust them.
 5. The script will interactively prompt for two parameters:
 
-- Login, which is your DOCKER_USERNAME_LOCAL added as a secret in GitHub.
-- Password, which is your password added as a secret DOCKER_PASSWORD_LOCAL in GitHub.
+- Login, which is your `DOCKER_USERNAME_LOCAL` added as a secret in GitHub.
+- Password, which is your password added as a secret `DOCKER_PASSWORD_LOCAL` in GitHub.
 
 6. Docker restarts
 7. RUN _docker compose up -d_
