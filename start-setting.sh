@@ -1,80 +1,54 @@
 #!/bin/bash
-# Перевірка наявності запису
-echo -e "\nдодаємо запис 127.0.0.1 registry.local в /etc/hosts\n"
+# Check if the entry exists
+echo -e "\nAdding entry 127.0.0.1 registry.local to /etc/hosts\n"
 if ! grep -q "127.0.0.1 registry.local" /etc/hosts; then
-  # Запис не знайдено, додаємо його
-  echo "127.0.0.1 registry.local" | sudo tee -a /etc/hosts
-
-  # Повідомлення про успішне додавання
-  echo "Запис успішно додано до /etc/hosts!"
+    # Entry not found, adding it
+    echo "127.0.0.1 registry.local" | sudo tee -a /etc/hosts
+    echo "Entry successfully added to /etc/hosts!"
 else
-  # Запис вже існує
-  echo "Запис '127.0.0.1 registry.local' вже існує в /etc/hosts."
+    echo "Entry '127.0.0.1 registry.local' already exists in /etc/hosts."
 fi
 
-mkdir data-registrymy
-mkdir data-registrymy1
+mkdir data-registrymy \
+      -p security-settings/auth
 
-mkdir -p path/auth
-
-echo "Введіть ваш логін:"
-read testuser
-echo "Введіть пароль:"
-read testpassword
+echo "Please enter your login:"
+read user
+echo "please enter your password:"
+read -s password
 
 docker run \
-  --entrypoint htpasswd \
-  httpd:2 -Bbn $testuser $testpassword > path/auth/htpasswd
+    --entrypoint htpasswd \
+    httpd:2 -Bbn $user $password > security-settings/auth/htpasswd
 
+echo "Creating self-signed certificate"
+mkdir -p security-settings/certs
+openssl genrsa -out security-settings/certs/registry.local.key 2048
+openssl req -new -key security-settings/certs/registry.local.key -out security-settings/certs/registry.local.csr -subj "/C=UA/ST=Kyiv/L=Kyiv/O=Company/OU=Department/CN=registry.local"
+openssl x509 -req -days 365 -in security-settings/certs/registry.local.csr -signkey security-settings/certs/registry.local.key -out security-settings/certs/registry.local.crt
 
-echo "створюємо самопідписані сертифікати"
-
-echo "Створення першого сертифікату"
-mkdir -p path/certs
-openssl genrsa -out path/certs/mykey.key 2048
-openssl req -new -key path/certs/mykey.key -out path/certs/mycert.csr -subj "/C=UA/ST=Kyiv/L=Kyiv/O=Company/OU=Department/CN=registry.local"
-openssl x509 -req -days 365 -in path/certs/mycert.csr -signkey path/certs/mykey.key -out path/certs/mycert.crt
-
-echo "Створення другого сертифікату"
-mkdir -p path/certs1
-openssl genrsa -out path/certs1/mykey1.key 2048
-openssl req -new -key path/certs1/mykey1.key -out path/certs1/mycert1.csr -subj "/C=UA/ST=Kyiv/L=Kyiv/O=Company/OU=Department/CN=registry.local"
-openssl x509 -req -days 365 -in path/certs1/mycert1.csr -signkey path/certs1/mykey1.key -out path/certs1/mycert1.crt
-
-
-echo "Створення директорії для сертифікатів"
+echo "Creating directory for certificate"
 sudo mkdir -p /etc/docker/certs.d/registry.local
 
-echo "Додавання сертифікатів до системного сховища"
-sudo cp path/certs/mycert.crt /etc/docker/certs.d/registry.local/
-sudo cp path/certs1/mycert1.crt /etc/docker/certs.d/registry.local/
+echo "Adding certificates to the system store"
+sudo cp security-settings/certs/registry.local.crt /etc/docker/certs.d/registry.local/
 
-echo "Cтворення символічних посилань"
+echo "Creating symbolic link"
+current_dir=$(pwd)
 
-# Отримати список користувачів з домашніми папками в /home
-users=$(awk -F':' '/\/home\// {print $1}' /etc/passwd)
-
-# Ввести ім'я користувача
-while true; do
-  echo -n -e "Введіть ім'я користувача де знахидоться проект Registry: \n"
-  awk -F':' '/\/home\// {print $1}' /etc/passwd
-  read username
-
-  # Перевірити, чи введений користувач є в списку
-  if [[ "$users" =~ (^|,)"$username"($|,) ]]; then
-    break
-  else
-    echo "Невірне ім'я користувача!"
-  fi
-done
-
-mkdir -p /home/$username/.docker
-
+if [[ "$current_dir" == *"/home/"* ]]; then
+    
+    user=$(echo "$current_dir" | awk -F'/home/' '{print $2}' | awk -F'/' '{print $1}')
+    users="/home/$user"
+else
+    users="/root"
+fi
+mkdir -p /home/$users/.docker
 cd /etc/docker/certs.d/registry.local
-sudo ln -s /etc/docker/certs.d/registry.local/mycert.crt /home/$username/.docker/ca.pem
-sudo ln -s /etc/docker/certs.d/registry.local/mycert1.crt /home/$username/.docker/ca1.pem
+sudo ln -s /etc/docker/certs.d/registry.local/registry.local.crt $users/.docker/ca.pem
 
-echo "Перезавантаження Docker для застосування змін"
+echo "Restart Docker"
 sudo systemctl restart docker
-echo "Запускаємо Registy"
+
+echo "Start Registry"
 docker compose up -d
